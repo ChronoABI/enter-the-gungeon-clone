@@ -8,7 +8,6 @@ public class PlayerController : MonoBehaviour
     private InputReader input;
     [SerializeField]
     private float moveSpeed = 5f;
-
     [SerializeField]
     private GameObject bulletPrefab;
 
