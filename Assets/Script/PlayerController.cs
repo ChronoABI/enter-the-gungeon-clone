@@ -6,7 +6,6 @@ public class PlayerController : MonoBehaviour
 {
     [SerializeField]
     private InputReader input;
-
     [SerializeField]
     private float moveSpeed = 5f;
 
