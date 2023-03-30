@@ -4,73 +4,61 @@ using UnityEngine;
 
 public class PlayerController : MonoBehaviour
 {
-    [SerializeField]
-    private InputReader input;
-    [SerializeField]
-    private float moveSpeed = 5f;
-    [SerializeField]
-    private GameObject bulletPrefab;
+    [SerializeField] InputReader input;
+    [SerializeField] float moveSpeed = 5f;
+    [SerializeField] GameObject bulletPrefab;
+    [SerializeField] float bulletSpeed = 10f;
+    [SerializeField] float fireRate = 0.5f;
+    [SerializeField] int maxAmmo = 10;
+    [SerializeField] float reloadTime = 1f;
 
-    [SerializeField]
-    private float bulletSpeed = 10f;
+    [SerializeField] float dashSpeed = 10f; // dash speed
+    [SerializeField] float dashTime = 0.5f; // duration of dash in seconds
+    [SerializeField] float dashCooldownTime = 0f;
 
-    [SerializeField]
-    private float fireRate = 0.5f;
-
-    [SerializeField]
-    private int maxAmmo = 10;
-
-    [SerializeField]
-    private float reloadTime = 1f;
 
     // Input
     private Vector2 _moveDirection;
-    private bool _isShooting;
-    private bool _reload = false;
+    private Vector3 _dashDirection;
+    [SerializeField]private bool _isShooting, _dashButtonClicked,_isReloading;
+    private float _nextFireTime = 0f;
+    private float _dashCooldownTimeLeft = 0f;
+    private int _currentAmmo;
+    [SerializeField]private bool _reloading, 
+    _canDash = true;
 
-    private bool isReloading = false;
-    private float nextFireTime = 0f;
-    private int currentAmmo;
 
-    private Rigidbody2D rb;
 
-    // Different Handle Inputs
+
+    private Rigidbody2D _rb;
+
+    // Different Inputs Handle
     private void HandleMove(Vector2 dir) => _moveDirection = dir;
 
     private void HandleShoot() => _isShooting = true;
 
     private void HandleCancelShoot() => _isShooting = false;
 
-    private void HandleReload() => _reload = true;
+    private void HandleReload() => _reloading = true;
+
+    private void HandleDash() => _dashButtonClicked = true;
 
     void Start()
     {
-        currentAmmo = maxAmmo;
-        rb = GetComponent<Rigidbody2D>();
+        _currentAmmo = maxAmmo;
+        _rb = GetComponent<Rigidbody2D>();
         input.MoveEvent += HandleMove;
         input.shootEvent += HandleShoot;
         input.reloadEvent += HandleReload;
         input.shootCancelEvent += HandleCancelShoot;
+        input.dashEvent += HandleDash;
     }
 
     private void Update()
     {
         Move();
-
-        //This Shoot feature will be implimented in a gun later
-        if (_reload)
-        {
-            if (currentAmmo < maxAmmo && !isReloading)
-            {
-                StartCoroutine(Reload());
-            }
-            _reload = false;
-        }
-        else if (_isShooting && Time.time > nextFireTime && currentAmmo > 0 && !isReloading)
-        {
-            nextFireTime = Time.time + fireRate;
-            Shoot();
-        }
+        ShootLogic();
+        DashLogic();
     }
 
     private void Move()
@@ -80,23 +68,97 @@ public class PlayerController : MonoBehaviour
 
         Vector2 movement = new Vector2(_moveDirection.x, _moveDirection.y);
         movement = movement.normalized * moveSpeed * Time.deltaTime;
-        rb.MovePosition(rb.position + movement);
+        _rb.MovePosition(_rb.position + movement);
     }
 
+    void ShootLogic(){
+        //This Shoot feature will be implimented in a gun later
+        if (_reloading)
+        {
+            if (_currentAmmo < maxAmmo && !_isReloading)
+            {
+                StartCoroutine(Reload());
+            }
+            _reloading = false;
+        }
+        else if (_isShooting && Time.time > _nextFireTime && _currentAmmo > 0 && !_isReloading)
+        {
+            _nextFireTime = Time.time + fireRate;
+            Shoot();
+        }
+    }
     void Shoot()
     {
-        Debug.Log(message: "shooting");
         GameObject bullet = Instantiate(bulletPrefab, transform.position, transform.rotation);
         Rigidbody2D rb = bullet.GetComponent<Rigidbody2D>();
         rb.velocity = transform.right * bulletSpeed;
-        currentAmmo--;
+        _currentAmmo--;
     }
-
     IEnumerator Reload()
     {
-        isReloading = true;
+        _isReloading = true;
         yield return new WaitForSeconds(reloadTime);
-        currentAmmo = maxAmmo;
-        isReloading = false;
+        _currentAmmo = maxAmmo;
+        _isReloading = false;
+    }
+
+ void DashLogic(){
+// maybe th same logic as shoot
+if(_dashButtonClicked && _canDash ){
+    Vector2 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+    Vector2 currentPosition = new Vector2(transform.position.x, transform.position.y);
+    _dashDirection = (mousePos - currentPosition).normalized;
+    StartCoroutine(Dash());
+}
+ }
+
+    IEnumerator Dash(){
+        _canDash = false;
+        float dashTimer = 0f;
+        while(dashTimer < dashTime){
+            transform.position += _dashDirection * dashSpeed * Time.deltaTime;
+            dashTimer += Time.deltaTime;
+            yield return null;
+        }
+        yield return new WaitForSeconds(dashCooldownTime);
+        _dashButtonClicked = false;
+        _canDash = true;
+
     }
 }
+
+// dash mechanics
+
+//  public float dashSpeed = 10f;
+//     public float dashTime = 0.5f;
+//     public float dashCooldown = 1f;
+
+//     private bool canDash = true;
+//     private Vector3 dashDirection;
+
+//     // Update is called once per frame
+//     void Update()
+//     {
+//         if (Input.GetMouseButtonDown(0) && canDash)
+//         {
+//             Vector3 mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+//             dashDirection = (mousePos - transform.position).normalized;
+//             StartCoroutine(Dash());
+//         }
+//     }
+
+//     IEnumerator Dash()
+//     {
+//         canDash = false;
+//         float dashTimer = 0f;
+
+//         while (dashTimer < dashTime)
+//         {
+//             transform.position += dashDirection * dashSpeed * Time.deltaTime;
+//             dashTimer += Time.deltaTime;
+//             yield return null;
+//         }
+
+//         yield return new WaitForSeconds(dashCooldown);
+//         canDash = true;
+//     }
